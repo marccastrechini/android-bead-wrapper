@@ -1,24 +1,24 @@
-﻿package com.beadpay.wrapper.contract
+package com.beadpay.wrapper.contract
 
-import android.content.Context
 import android.content.Intent
-import androidx.activity.result.contract.ActivityResultContract
-import com.beadpay.wrapper.CheckoutActivity
+import android.net.Uri
 import com.beadpay.wrapper.model.PayRequest
 import com.beadpay.wrapper.model.PayResult
 
-class PayContract : ActivityResultContract<PayRequest, PayResult?>() {
+object PayContract {
+    const val ACTION_PAY       = "com.valor.intent.action.PAY"
+    const val EXTRA_REQUEST    = "com.beadpay.wrapper.extra.PAY_REQUEST"
 
-    override fun createIntent(context: Context, input: PayRequest): Intent =
-        Intent(context, CheckoutActivity::class.java).apply {
-            putExtra(EXTRA_REQUEST, input)
-        }
+    private const val PARAM_STATUS_CODE = "statusCode"
+    private const val PARAM_PAYMENT_ID  = "paymentId"
+    private const val PARAM_ERROR_MSG   = "error"
 
-    override fun parseResult(resultCode: Int, intent: Intent?): PayResult? =
-        intent?.getParcelableExtra(EXTRA_RESULT)
+    fun buildPayIntent(request: PayRequest) =
+        Intent(ACTION_PAY).apply { putExtra(EXTRA_REQUEST, request) }
 
-    companion object {
-        const val EXTRA_REQUEST = "bead.REQUEST"
-        const val EXTRA_RESULT = "bead.RESULT"
-    }
+    fun parseResultUri(uri: Uri) = PayResult(
+        statusCode   = uri.getQueryParameter(PARAM_STATUS_CODE)?.toInt() ?: -1,
+        paymentId    = uri.getQueryParameter(PARAM_PAYMENT_ID),
+        errorMessage = uri.getQueryParameter(PARAM_ERROR_MSG)
+    )
 }
