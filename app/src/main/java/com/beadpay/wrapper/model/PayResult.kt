@@ -1,13 +1,13 @@
-﻿package com.beadpay.wrapper.model
+package com.beadpay.wrapper.model
 
 import android.os.Parcelable
+import com.squareup.moshi.JsonClass
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+@JsonClass(generateAdapter = true)
 data class PayResult(
-    val status: Status,
-    val trackingId: String?,
-    val message: String? = null
-) : Parcelable {
-    enum class Status { COMPLETED, FAILED, CANCELED }
-}
+    val statusCode:  Int,
+    val paymentId:   String?,
+    val errorMessage:String?
+) : Parcelable

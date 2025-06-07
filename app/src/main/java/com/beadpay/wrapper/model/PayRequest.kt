@@ -1,11 +1,16 @@
-﻿package com.beadpay.wrapper.model
+package com.beadpay.wrapper.model
 
 import android.os.Parcelable
+import com.squareup.moshi.JsonClass
 import kotlinx.parcelize.Parcelize
+import java.math.BigDecimal
 
 @Parcelize
+@JsonClass(generateAdapter = true)
 data class PayRequest(
-    val amountCents: Long,
-    val currency: String = "USD",
-    val externalTxnId: String? = null
-) : Parcelable
+    val amountMinor: Long,
+    val currency:    String
+) : Parcelable {
+    constructor(amount: BigDecimal, currency: String) :
+            this(amount.movePointRight(2).longValueExact(), currency)
+}
