@@ -27,7 +27,7 @@ class PaymentWebViewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val startUrl = intent.getStringExtra(EXTRA_URL)
-            ?: error("Missing \ in intent")
+            ?: error("Missing / in intent")
 
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = true

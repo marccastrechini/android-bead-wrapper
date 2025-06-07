@@ -1,30 +1,21 @@
 package com.beadpay.wrapper.network
 
-import com.beadpay.wrapper.network.dto.AuthTokenResponse
-import com.beadpay.wrapper.network.dto.CreatePaymentRequest
-import com.beadpay.wrapper.network.dto.CreatePaymentResponse
-import retrofit2.http.Body
-import retrofit2.http.FieldMap
+import com.beadpay.wrapper.model.AuthTokenResponse
+import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
-import retrofit2.http.Header
 import retrofit2.http.POST
-import retrofit2.http.Url
 
+/**
+ * Auth-only interface.  Payment calls live in PaymentsApi.
+ */
 interface BeadApi {
 
-    /** Keycloak password-grant (ROP C) */
     @FormUrlEncoded
-    @POST
-    suspend fun fetchToken(
-        @Url url: String,
-        @FieldMap(encoded = true)
-        fields: Map<String, @JvmSuppressWildcards String>
+    @POST("/auth/realms/bead/protocol/openid-connect/token")
+    suspend fun getAuthToken(
+        @Field("username") username: String,
+        @Field("password") password: String,
+        @Field("grant_type") grantType: String = "password",
+        @Field("client_id")  clientId: String
     ): AuthTokenResponse
-
-    /** Bead sandbox payment creation */
-    @POST("payments/crypto")
-    suspend fun createPayment(
-        @Header("Authorization") bearer: String,
-        @Body request: CreatePaymentRequest
-    ): CreatePaymentResponse
 }

@@ -18,15 +18,14 @@ class CheckoutActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // TODO: setContentView(R.layout.activity_checkout)
+        // TODO setContentView(R.layout.activity_checkout)
 
-        // Demo: immediately create a \.00 USD payment, then open the hosted page
         lifecycleScope.launch {
             val resp = createPaymentUseCase(
                 PaymentRequest(
                     amount = BigDecimal("1.00"),
                     currency = "USD",
-                    partnerId = "valor"      // ? replace with real value
+                    partnerId = "valor"
                 )
             )
 

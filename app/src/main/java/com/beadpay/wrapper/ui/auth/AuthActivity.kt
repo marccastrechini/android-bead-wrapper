@@ -9,6 +9,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// explicit imports for the helpers
+import com.beadpay.wrapper.ui.auth.buildAuthIntent
+import com.beadpay.wrapper.ui.auth.handleRedirect
+
 @AndroidEntryPoint
 class AuthActivity : ComponentActivity() {
 
@@ -16,14 +20,16 @@ class AuthActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         // Launch the browser-based PKCE flow
-        startActivity(authRepo.buildAuthIntent())
+        startActivity(buildAuthIntent(this))
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+
         lifecycleScope.launch {
-            authRepo.handleRedirect(intent)   // ← pass the Intent, not Uri
+            intent?.let { handleRedirect(it) }   // handle the custom-scheme redirect
             finish()
         }
     }

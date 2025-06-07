@@ -6,8 +6,9 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 @JsonClass(generateAdapter = true)
-data class PayResult(
-    val statusCode:  Int,
-    val paymentId:   String?,
-    val errorMessage:String?
+data class PaymentResponse(
+    val id: String,
+    val hostedPaymentPageUrl: String,
+    val expiresAt: String,
+    val status: String
 ) : Parcelable

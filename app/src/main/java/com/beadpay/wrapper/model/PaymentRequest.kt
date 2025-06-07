@@ -7,10 +7,8 @@ import java.math.BigDecimal
 
 @Parcelize
 @JsonClass(generateAdapter = true)
-data class PayRequest(
-    val amountMinor: Long,
-    val currency:    String
-) : Parcelable {
-    constructor(amount: BigDecimal, currency: String) :
-            this(amount.movePointRight(2).longValueExact(), currency)
-}
+data class PaymentRequest(
+    val amount: BigDecimal,
+    val currency: String,
+    val partnerId: String
+) : Parcelable
