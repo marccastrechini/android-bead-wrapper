@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.beadpay.wrapper"
-    compileSdk = 34            // Android 14 (stable)
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.beadpay.wrapper"
@@ -16,10 +16,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // ↴ AppAuth manifest placeholder (needed for <data android:scheme="${appAuthRedirectScheme}"/>)
         manifestPlaceholders["appAuthRedirectScheme"] = "beadwrapper"
     }
 
@@ -39,6 +36,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions { jvmTarget = "17" }
 }
 
@@ -53,6 +51,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.12")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.1") // <– Moshi adapter codegen
 
     // Keycloak password-grant auth
     implementation("net.openid:appauth:0.11.1")
@@ -67,11 +66,12 @@ dependencies {
     // Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
 
-    // Unit tests
+    // ---------- Unit tests ----------
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.0.0-alpha.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 
-    // Instrumentation tests
+    // ---------- Instrumentation tests ----------
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
 }
