@@ -1,14 +1,17 @@
 package com.beadpay.wrapper.repository
 
+import com.beadpay.wrapper.storage.EncryptedPrefs
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Very thin in-memory token cache; replace with EncryptedSharedPrefs later. */
+/**
+ * Thin wrapper around EncryptedPrefs that the rest of the app can depend on.
+ */
 @Singleton
-class AuthLocalStore @Inject constructor() {
-    var accessToken: String? = null
-        private set
-
-    fun save(token: String)  { accessToken = token }
-    fun clear()              { accessToken = null  }
+class AuthLocalStore @Inject constructor(
+    private val prefs: EncryptedPrefs
+) {
+    var accessToken: String?
+        get() = prefs.accessToken
+        set(value) { prefs.accessToken = value }
 }
