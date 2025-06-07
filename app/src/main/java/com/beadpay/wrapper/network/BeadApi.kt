@@ -4,16 +4,24 @@ import com.beadpay.wrapper.network.dto.AuthTokenResponse
 import com.beadpay.wrapper.network.dto.CreatePaymentRequest
 import com.beadpay.wrapper.network.dto.CreatePaymentResponse
 import retrofit2.http.Body
+import retrofit2.http.FieldMap
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Url
 
 interface BeadApi {
-    @POST("auth/realms/bead/protocol/openid-connect/token")
+
+    /** Keycloak password-grant (ROP C) */
+    @FormUrlEncoded
+    @POST
     suspend fun fetchToken(
-        @Header("Content-Type") contentType: String = "application/x-www-form-urlencoded",
-        @Body body: String
+        @Url url: String,
+        @FieldMap(encoded = true)
+        fields: Map<String, @JvmSuppressWildcards String>
     ): AuthTokenResponse
 
+    /** Bead sandbox payment creation */
     @POST("payments/crypto")
     suspend fun createPayment(
         @Header("Authorization") bearer: String,
