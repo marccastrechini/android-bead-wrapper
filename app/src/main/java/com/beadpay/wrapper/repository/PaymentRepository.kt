@@ -11,9 +11,10 @@ class PaymentRepository @Inject constructor(
     private val api: BeadApi,
     private val authRepo: AuthRepository
 ) {
+    /** Creates a crypto payment and returns Bead’s response. */
     suspend fun startPayment(req: PayRequest) =
         api.createPayment(
-            bearer = "Bearer " + authRepo.getToken(),   // implement getToken() or reuse login()
+            bearer = "Bearer ${authRepo.getValidToken()}",
             request = CreatePaymentRequest(
                 amountMinor = req.amountMinor,
                 currency    = req.currency,
