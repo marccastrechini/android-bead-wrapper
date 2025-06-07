@@ -1,9 +1,14 @@
+@file:Suppress("UnstableApiUsage")              // for isTestCoverageEnabled
+
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+    id("jacoco")                                // ← NEW
 }
 
 android {
@@ -30,19 +35,22 @@ android {
                 "proguard-rules.pro"
             )
         }
+        getByName("debug") {
+            isTestCoverageEnabled = true        // enables JaCoCo .ec files
+        }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {
     implementation("net.openid:appauth:0.11.1")
     implementation("androidx.browser:browser:1.8.0")
+
     // AndroidX core UI
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -53,10 +61,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.12")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
-    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.1") // <– Moshi adapter codegen
-
-    // Keycloak password-grant auth
-    implementation("net.openid:appauth:0.11.1")
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
 
     // Secure credential storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
@@ -76,4 +81,26 @@ dependencies {
     // ---------- Instrumentation tests ----------
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+}
+
+/**
+ * Generates JaCoCo coverage for unit + instrumentation tests:
+ *   ./gradlew jacocoDebugReport
+ */
+tasks.register<JacocoReport>("jacocoDebugReport") {
+    dependsOn("testDebugUnitTest", "connectedDebugAndroidTest")
+
+    val fileFilter = listOf("**/di/**", "**/generated/**", "**/*Hilt*.*")
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    classDirectories.setFrom(
+        fileTree("${buildDir}/intermediates/classes/debug") { exclude(fileFilter) }
+    )
+    sourceDirectories.setFrom(files(mainSrc))
+    executionData.setFrom(fileTree(buildDir) { include("**/*.ec") })
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
