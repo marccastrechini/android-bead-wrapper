@@ -21,6 +21,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+    
+        <activity
+            android:name="com.beadpay.wrapper.ui.auth.AuthActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="beadwrapper"
+                      android:host="authcallback" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
