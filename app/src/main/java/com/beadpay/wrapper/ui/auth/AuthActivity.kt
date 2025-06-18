@@ -9,7 +9,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// explicit imports for the helpers
+// helper extensions / functions
 import com.beadpay.wrapper.ui.auth.buildAuthIntent
 import com.beadpay.wrapper.ui.auth.handleRedirect
 
@@ -21,15 +21,21 @@ class AuthActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Launch the browser-based PKCE flow
+        // Launch the browser-based PKCE flow.
+        // NOTE: For SDK 35 no change is required here.
         startActivity(buildAuthIntent(this))
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    /**
+     * Called when the custom-scheme redirect brings us back from the browser.
+     * Starting with Activity 1.9 (SDK 34+) the parameter is @NonNull, so the
+     * signature must use a non-nullable Intent.
+     */
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
         lifecycleScope.launch {
-            intent?.let { handleRedirect(it) }   // handle the custom-scheme redirect
+            handleRedirect(intent)   // Intent is guaranteed non-null
             finish()
         }
     }
