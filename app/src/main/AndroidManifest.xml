@@ -2,37 +2,60 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Needed for WebView and network calls -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.BeadWrapper"
-        tools:targetApi="31">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+        android:name=".BeadApp"
+    android:allowBackup="false"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:fullBackupContent="@xml/backup_rules"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.BeadWrapper"
+    android:usesCleartextTraffic="false"
+    tools:targetApi="34">                           <!-- align with compile/targetSdk -->
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    
-        <activity
-            android:name="com.beadpay.wrapper.ui.auth.AuthActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="beadwrapper"
-                      android:host="authcallback" />
-            </intent-filter>
-        </activity>
-    </application>
+    <!-- Launcher (debug convenience) -->
+    <activity
+        android:name=".MainActivity"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent-filter>
+    </activity>
 
-</manifest>
+    <!-- OAuth / OpenID redirect -->
+    <activity
+        android:name="com.beadpay.wrapper.ui.auth.AuthActivity"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW"/>
+            <category android:name="android.intent.category.DEFAULT"/>
+            <category android:name="android.intent.category.BROWSABLE"/>
+            <data android:scheme="beadwrapper"
+                android:host="authcallback"/>
+        </intent-filter>
+    </activity>
+
+    <!-- Entry point from POS → opens CheckoutActivity -->
+    <activity
+        android:name=".ui.checkout.CheckoutActivity"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="com.beadpay.wrapper.intent.PAY"/>
+            <category android:name="android.intent.category.DEFAULT"/>
+        </intent-filter>
+    </activity>
+
+    <!-- Internal WebView host (not exported) -->
+    <activity
+        android:name="com.beadpay.wrapper.ui.payment.PaymentWebViewActivity"
+        android:exported="false"
+        android:theme="@style/Theme.BeadWrapper.Fullscreen"/>
+</application>
+
+    </manifest>

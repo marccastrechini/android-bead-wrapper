@@ -20,10 +20,26 @@ class EncryptedPrefs(context: Context) {
     )
 
     var accessToken: String?
-        get() = prefs.getString(KEY_TOKEN, null)
+        get() = prefs.getString(KEY_ACCESS_TOKEN, null)
         set(value) = prefs.edit().apply {
-            if (value == null) remove(KEY_TOKEN) else putString(KEY_TOKEN, value)
+            if (value == null) remove(KEY_ACCESS_TOKEN) else putString(KEY_ACCESS_TOKEN, value)
         }.apply()
 
-    private companion object { const val KEY_TOKEN = "access_token" }
+    var refreshToken: String?
+        get() = prefs.getString(KEY_REFRESH_TOKEN, null)
+        set(value) = prefs.edit().apply {
+            if (value == null) remove(KEY_REFRESH_TOKEN) else putString(KEY_REFRESH_TOKEN, value)
+        }.apply()
+
+    var idToken: String?
+        get() = prefs.getString(KEY_ID_TOKEN, null)
+        set(value) = prefs.edit().apply {
+            if (value == null) remove(KEY_ID_TOKEN) else putString(KEY_ID_TOKEN, value)
+        }.apply()
+
+    private companion object {
+        const val KEY_ACCESS_TOKEN  = "access_token"
+        const val KEY_REFRESH_TOKEN = "refresh_token"
+        const val KEY_ID_TOKEN      = "id_token"
+    }
 }
