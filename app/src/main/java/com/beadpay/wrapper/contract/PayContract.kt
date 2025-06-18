@@ -4,30 +4,25 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
-import com.beadpay.wrapper.model.PaymentRequest
 import com.beadpay.wrapper.model.PaymentResponse
 import com.beadpay.wrapper.ui.checkout.CheckoutActivity
 
-/**
- * Public-facing contract a host app (Valor POS) uses to start a payment
- * and receive the result.
- */
 object PayContract {
 
-    /* Keys for crossing the wrapper/host boundary */
-    const val EXTRA_REQUEST = "extra_request"   // Parcelable<PaymentRequest>
-    const val EXTRA_RESULT  = "extra_result"    // Parcelable<PaymentResponse>
+    /* ── Extras ───────────────────────────────────────────── */
+    const val EXTRA_AMOUNT = "amount"                 // long
+    const val EXTRA_RESULT = "extra_result"           // Parcelable<PaymentResponse>
 
-    /** Classic helper for startActivityForResult */
-    fun buildIntent(context: Context, request: PaymentRequest): Intent =
+    /* ── Classic helper (startActivityForResult) ─────────── */
+    fun buildIntent(context: Context, amount: Long): Intent =
         Intent(context, CheckoutActivity::class.java)
-            .putExtra(EXTRA_REQUEST, request)
+            .putExtra(EXTRA_AMOUNT, amount)
 
-    /** Modern Activity-Result API wrapper */
+    /* ── Activity-Result API helper ───────────────────────── */
     class CreatePaymentLauncher :
-        ActivityResultContract<PaymentRequest, PaymentResponse?>() {
+        ActivityResultContract<Long /* amount */, PaymentResponse?>() {
 
-        override fun createIntent(context: Context, input: PaymentRequest): Intent =
+        override fun createIntent(context: Context, input: Long): Intent =
             buildIntent(context, input)
 
         override fun parseResult(resultCode: Int, intent: Intent?): PaymentResponse? =

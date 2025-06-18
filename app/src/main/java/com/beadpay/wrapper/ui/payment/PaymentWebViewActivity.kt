@@ -1,82 +1,186 @@
 package com.beadpay.wrapper.ui.payment
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
+import com.beadpay.wrapper.BuildConfig
 import com.beadpay.wrapper.contract.PayContract
-import com.beadpay.wrapper.model.PaymentResponse
+import com.beadpay.wrapper.model.PayResult
+import com.beadpay.wrapper.network.PaymentsApi
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-/**
- * Displays the Bead Hosted Payment Page and listens for the callback URI:
- *
- *     beadwrapper://callback?paymentId=…&statusCode=…
- *
- * When detected, converts the query parameters into a [PaymentResponse],
- * returns it to the caller via `setResult(RESULT_OK, …)`, then finishes.
- */
+@AndroidEntryPoint
 class PaymentWebViewActivity : ComponentActivity() {
 
-    companion object {
-        /** Internal extra (wrapper-only) for the HPP URL to load. */
-        const val EXTRA_HPP_URL = "hppUrl"
+    @Inject lateinit var paymentsApi: PaymentsApi
 
+    companion object {
+        const val EXTRA_HPP_URL = "extra_hpp_url"
+        const val EXTRA_TRACKING_ID = "tracking_id"
         private const val CALLBACK_SCHEME = "beadwrapper"
-        private const val CALLBACK_PATH   = "/callback"
+        private const val CALLBACK_PATH = "/callback"
+        private const val TAG = "PaymentWebView"
+
+        fun launch(context: Context, hppUrl: String, trackingId: String) {
+            val i = Intent(context, PaymentWebViewActivity::class.java)
+                .putExtra(EXTRA_HPP_URL, hppUrl)
+                .putExtra(EXTRA_TRACKING_ID, trackingId)
+            context.startActivity(i)
+        }
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // Lifecycle
-    // ────────────────────────────────────────────────────────────────────
-    @SuppressLint("SetJavaScriptEnabled")   // HPP typically requires JS
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
+
         val hppUrl = intent.getStringExtra(EXTRA_HPP_URL)
-            ?: error("PaymentWebViewActivity launched without \$EXTRA_HPP_URL")
+            ?: error("PaymentWebViewActivity launched without $EXTRA_HPP_URL")
+
+        val trackingId = intent.getStringExtra(EXTRA_TRACKING_ID)
+            ?: return showErrorDialog("Missing tracking ID")
 
         val webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(
-                    view: WebView,
-                    request: WebResourceRequest
-                ) = handleUrl(request.url)
-            }
+            configureSettings()
+            webViewClient = BeadWebClient()
             loadUrl(hppUrl)
         }
 
         setContentView(webView)
+
+        lifecycleScope.launch {
+            pollPaymentStatus(trackingId)
+        }
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ────────────────────────────────────────────────────────────────────
-    /** Intercepts the custom callback URL and finishes the Activity. */
-    private fun handleUrl(uri: Uri): Boolean {
-        if (uri.scheme == CALLBACK_SCHEME && uri.path == CALLBACK_PATH) {
+    private suspend fun pollPaymentStatus(trackingId: String) {
+        var lastStatus: String? = null
 
-            val paymentId  = uri.getQueryParameter("paymentId") ?: ""
-            val statusCode = uri.getQueryParameter("statusCode") ?: "UNKNOWN"
+        while (true) {
+            try {
+                val response = paymentsApi.getPaymentStatus(trackingId)
+                val statusCode = response.statusCode
 
-            val response = PaymentResponse(
-                id = paymentId,
-                hostedPaymentPageUrl = "", // HPP flow is completed
-                expiresAt = "",
-                status = statusCode
-            )
+                if (statusCode != lastStatus) {
+                    Log.i(TAG, "🟢 Payment status changed: $statusCode")
+                    lastStatus = statusCode
+                } else {
+                    Log.d(TAG, "Status unchanged: $statusCode")
+                }
 
-            setResult(
-                RESULT_OK,
-                Intent().putExtra(PayContract.EXTRA_RESULT, response)
-            )
-            finish()
-            return true   // prevent WebView from loading the URL
+                if (statusCode.equals("COMPLETED", ignoreCase = true) ||
+                    statusCode.equals("FAILED", ignoreCase = true)) {
+
+                    Log.i(TAG, "🎯 Final status reached: $statusCode — finishing activity.")
+                    finishWithResult(trackingId, statusCode)
+                    break
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error polling payment status", e)
+                showErrorDialog("Failed to check payment status.\n${e.localizedMessage}")
+                break
+            }
+
+            delay(2000)
         }
-        return false
+    }
+
+    private inner class BeadWebClient : WebViewClient() {
+
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            Log.d(TAG, "Intercepted request URL → ${request.url}")
+            return handleUrl(request.url)
+        }
+
+        @Suppress("OverridingDeprecatedMember", "DEPRECATION")
+        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+            Log.d(TAG, "Intercepted legacy URL → $url")
+            return handleUrl(Uri.parse(url))
+        }
+
+        override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+            Log.d(TAG, "Page STARTED → $url")
+        }
+
+        override fun onPageFinished(view: WebView, url: String) {
+            Log.d(TAG, "Page FINISHED → $url")
+        }
+
+        override fun onReceivedError(
+            view: WebView,
+            request: WebResourceRequest,
+            error: WebResourceError
+        ) {
+            Log.e(TAG, "ERROR ${error.errorCode} on ${request.url} : ${error.description}")
+            showErrorDialog("Page load error: ${error.description}")
+        }
+
+        private fun handleUrl(uri: Uri): Boolean {
+            if (uri.scheme == CALLBACK_SCHEME && uri.path == CALLBACK_PATH) {
+                val paymentId = uri.getQueryParameter("paymentId") ?: ""
+                val statusCode = uri.getQueryParameter("statusCode") ?: "UNKNOWN"
+
+                Log.i(TAG, "Transaction complete → paymentId=$paymentId, status=$statusCode")
+
+                finishWithResult(paymentId, statusCode)
+                return true
+            }
+            return false
+        }
+    }
+
+    private fun showErrorDialog(message: String) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Payment Error")
+            .setMessage(message)
+            .setPositiveButton("OK") { _, _ -> finish() }
+            .setOnCancelListener { finish() }
+            .show()
+    }
+
+    private fun showErrorAndFinish(message: String) {
+        Log.e(TAG, "ERROR: $message")
+        showErrorDialog(message)
+    }
+
+    private fun WebView.configureSettings() = settings.run {
+        javaScriptEnabled = true
+        domStorageEnabled = true
+        cacheMode = WebSettings.LOAD_DEFAULT
+        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            forceDark = WebSettings.FORCE_DARK_AUTO
+        }
+    }
+
+    private fun finishWithResult(id: String, status: String) {
+        setResult(
+            RESULT_OK,
+            Intent().apply {
+                putExtra(PayContract.EXTRA_RESULT, PayResult(id, status))
+                putExtra("paymentId", id)   // ← add
+                putExtra("status",    status)
+            }
+        )
+        finish()
     }
 }

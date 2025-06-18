@@ -1,14 +1,16 @@
 package com.beadpay.wrapper.model
 
-import android.os.Parcelable
 import com.squareup.moshi.JsonClass
-import kotlinx.parcelize.Parcelize
 
-@Parcelize
 @JsonClass(generateAdapter = true)
 data class PaymentResponse(
-    val id: String,
-    val hostedPaymentPageUrl: String,
-    val expiresAt: String,
-    val status: String
-) : Parcelable
+    val trackingId: String,
+    val paymentPageId: String,
+    val paymentUrls: List<PaymentUrl>
+)
+
+@JsonClass(generateAdapter = true)
+data class PaymentUrl(
+    val type: String,
+    val url: String
+)
