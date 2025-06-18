@@ -77,22 +77,20 @@ class PaymentWebViewActivity : ComponentActivity() {
         while (true) {
             try {
                 val response = paymentsApi.getPaymentStatus(trackingId)
-                val status = response.statusCode
+                val statusCode = response.statusCode
 
-                if (status != lastStatus) {
-                    Log.i(TAG, "🟢 Payment status changed: $status")
-                    lastStatus = status
+                if (statusCode != lastStatus) {
+                    Log.i(TAG, "🟢 Payment status changed: $statusCode")
+                    lastStatus = statusCode
                 } else {
-                    Log.d(TAG, "Status unchanged: $status")
+                    Log.d(TAG, "Status unchanged: $statusCode")
                 }
 
-                if (status.equals("COMPLETED", ignoreCase = true) ||
-                    status.equals("FAILED", ignoreCase = true)) {
+                if (statusCode.equals("COMPLETED", ignoreCase = true) ||
+                    statusCode.equals("FAILED", ignoreCase = true)) {
 
-                    Log.i(TAG, "🎯 Final status reached: $status — finishing activity.")
-                    val result = PayResult(paymentId = trackingId, status = status)
-                    setResult(RESULT_OK, Intent().putExtra(PayContract.EXTRA_RESULT, result))
-                    finish()
+                    Log.i(TAG, "🎯 Final status reached: $statusCode — finishing activity.")
+                    finishWithResult(trackingId, statusCode)
                     break
                 }
 
@@ -143,9 +141,7 @@ class PaymentWebViewActivity : ComponentActivity() {
 
                 Log.i(TAG, "Transaction complete → paymentId=$paymentId, status=$statusCode")
 
-                val result = PayResult(paymentId = paymentId, status = statusCode)
-                setResult(RESULT_OK, Intent().putExtra(PayContract.EXTRA_RESULT, result))
-                finish()
+                finishWithResult(paymentId, statusCode)
                 return true
             }
             return false
@@ -174,5 +170,17 @@ class PaymentWebViewActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             forceDark = WebSettings.FORCE_DARK_AUTO
         }
+    }
+
+    private fun finishWithResult(id: String, status: String) {
+        setResult(
+            RESULT_OK,
+            Intent().apply {
+                putExtra(PayContract.EXTRA_RESULT, PayResult(id, status))
+                putExtra("paymentId", id)   // ← add
+                putExtra("status",    status)
+            }
+        )
+        finish()
     }
 }
