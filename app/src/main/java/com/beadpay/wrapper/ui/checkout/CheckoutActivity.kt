@@ -23,14 +23,14 @@ import javax.inject.Inject
  * 1. Reads **amount** (Double) from the intent extras.
  * 2. Ensures we have a bearer-token (password-grant login on first use).
  * 3. Calls POST /payments/crypto and receives the Hosted-Payment-Page URL.
- * 4. Opens that URL in [PaymentWebViewActivity].
+ * 4. Opens that URL in [PaymentWebViewActivity] and begins status polling.
  */
 @AndroidEntryPoint
 class CheckoutActivity : ComponentActivity() {
 
     @Inject lateinit var createPaymentUseCase: CreatePaymentUseCase
-    @Inject lateinit var authRepository:      AuthRepository
-    @Inject lateinit var moshi:               Moshi
+    @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var moshi: Moshi
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,9 +53,9 @@ class CheckoutActivity : ComponentActivity() {
                 }
 
                 val rsp = createPaymentUseCase(
-                    amount    = amount,
+                    amount = amount,
                     reference = "ORDER123",          // TODO: replace with real reference
-                    customer  = Customer.demo()      // TODO: real customer data
+                    customer = Customer.demo()       // TODO: real customer data
                 )
 
                 val hppUrl = rsp.paymentUrls.firstOrNull { it.type == "web" }?.url
@@ -63,8 +63,9 @@ class CheckoutActivity : ComponentActivity() {
 
                 /* ── 4. Launch Hosted-Payment-Page ─────────────── */
                 PaymentWebViewActivity.launch(
-                    context = this@CheckoutActivity,
-                    hppUrl  = hppUrl
+                    context    = this@CheckoutActivity,
+                    hppUrl     = hppUrl,
+                    trackingId = rsp.trackingId
                 )
                 finish()
 
