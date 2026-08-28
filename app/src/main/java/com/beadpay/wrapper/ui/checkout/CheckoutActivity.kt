@@ -6,10 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
+import com.beadpay.wrapper.config.BeadConfig
 import com.beadpay.wrapper.contract.PayContract
 import com.beadpay.wrapper.model.Customer
 import com.beadpay.wrapper.network.readProblemDetail
-import com.beadpay.wrapper.repository.AuthRepository
 import com.beadpay.wrapper.ui.payment.PaymentWebViewActivity
 import com.beadpay.wrapper.usecase.CreatePaymentUseCase
 import com.squareup.moshi.Moshi
@@ -23,9 +23,9 @@ import javax.inject.Inject
  * Entry-point Activity launched by the POS via ACTION_PAY.
  *
  * 1. Reads **amount** (Double) from the intent extras.
- * 2. Ensures we have a bearer token (password-grant login on first use).
- * 3. Calls POST /payments/crypto and receives the HPP URL + tracking-id.
- * 4. Opens that URL in [PaymentWebViewActivity] and waits for a result;
+ * 2. Calls POST /payments/crypto (authenticated with the terminal API key)
+ *    and receives the HPP URL + tracking-id.
+ * 3. Opens that URL in [PaymentWebViewActivity] and waits for a result;
  *    whatever comes back is forwarded to the POS app.
  */
 @AndroidEntryPoint
@@ -33,7 +33,6 @@ class CheckoutActivity : ComponentActivity() {
 
     /* ── DI ─────────────────────────────────────────────────────── */
     @Inject lateinit var createPaymentUseCase: CreatePaymentUseCase
-    @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var moshi: Moshi
 
     /* ── Activity-Result launcher for the Web-View ──────────────── */
@@ -49,7 +48,19 @@ class CheckoutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        /* 1. Read & validate amount from the wrapper-intent */
+        /* 1. Fail fast if the terminal credentials are not configured */
+        if (!BeadConfig.isValid) {
+            Timber.e("Missing terminal config: %s", BeadConfig.missing.joinToString())
+            return showErrorAndFinish(
+                """
+                Missing configuration: ${BeadConfig.missing.joinToString()}
+
+                Add the value(s) to local.properties, then rebuild.
+                """.trimIndent()
+            )
+        }
+
+        /* 2. Read & validate amount from the wrapper-intent */
         val amount: Double = intent
             .getFloatExtra(PayContract.EXTRA_AMOUNT, -1f)
             .toDouble()
@@ -58,22 +69,16 @@ class CheckoutActivity : ComponentActivity() {
 
         Timber.d("Starting payment: %.2f USD", amount)
 
-        /* 2 + 3. Make sure we’re logged-in, then create the payment */
+        /* 3. Create the payment */
         lifecycleScope.launch {
             try {
-                if (!authRepository.isLoggedIn) {
-                    Timber.d("No token cached – performing login()")
-                    authRepository.login()
-                }
-
                 val rsp = createPaymentUseCase(
                     amount     = amount,
                     reference  = "ORDER123",      // TODO replace with real ref
                     customer   = Customer.demo()  // TODO real shopper info
                 )
 
-                val hppUrl = rsp.paymentUrls
-                    .firstOrNull { it.type == "web" }?.url
+                val hppUrl = rsp.paymentUrls.firstOrNull()
                     ?: return@launch showErrorAndFinish("Missing web payment URL")
 
                 /* 4. Launch the Hosted-Payment-Page *for result* */
@@ -99,10 +104,19 @@ class CheckoutActivity : ComponentActivity() {
     }
 
     /* ── helpers ───────────────────────────────────────────────── */
+    /**
+     * Shows [message] followed by the terminal identity in use, then finishes.
+     *
+     * The identity is appended to every failure because the API's most common
+     * rejections (401/403) come back with no field-level detail — knowing which
+     * terminal and which key were used is usually the whole diagnosis.
+     */
     private fun showErrorAndFinish(message: String) {
+        val body = message.trim() + "\n\n" + BeadConfig.summary()
+
         AlertDialog.Builder(this)
             .setTitle("BeadPay")
-            .setMessage(message)
+            .setMessage(body)
             .setPositiveButton("OK") { _, _ -> finish() }
             .setOnCancelListener   {        finish() }
             .show()

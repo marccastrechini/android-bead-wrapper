@@ -12,9 +12,8 @@ import javax.inject.Singleton
 
 @Singleton
 class PaymentRepository @Inject constructor(
-    private val api:      PaymentsApi,
-    private val authRepo: AuthRepository,   // provides (and refreshes) JWT
-    private val moshi:    Moshi
+    private val api:   PaymentsApi,
+    private val moshi: Moshi
 ) {
 
     /**
@@ -38,8 +37,8 @@ class PaymentRepository @Inject constructor(
             paymentUrlType  = "web",
             reference       = reference,
             customer        = customer,
-            redirectUrl     = ""                // omitted if unused
-            // description / refundEmail intentionally left null
+            redirectUrl     = "",               // omitted if unused
+            refundEmail     = customer.email    // required for virtual terminals
         )
 
         /* ── 2️⃣  Pretty-print payload in debug builds ───────── */
@@ -50,12 +49,8 @@ class PaymentRepository @Inject constructor(
             Timber.tag("PaymentRepository").d("→ POST /payments/crypto\n%s", json)
         }
 
-        /* ── 3️⃣  Ensure **fresh** bearer token exists ───────── */
-        authRepo.getOrRefreshToken()   // suspends & refreshes when expired
-        // (The AuthInterceptor reads the token from EncryptedPrefs and
-        //  adds `Authorization: Bearer …` to every request automatically.)
-
-        /* ── 4️⃣  Network call — no manual header needed ─────── */
+        /* ── 3️⃣  Network call ───────────────────────────────── */
+        // ApiKeyInterceptor adds the `X-Api-Key` header automatically.
         return api.createPayment(body)
     }
 }

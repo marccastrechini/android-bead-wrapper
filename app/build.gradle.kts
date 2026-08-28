@@ -1,6 +1,7 @@
 @file:Suppress("UnstableApiUsage")
 
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import java.util.Properties
 
 plugins {
     // ── versions come from gradle/libs.versions.toml ──
@@ -12,6 +13,39 @@ plugins {
     id("kotlin-parcelize")                    // not in the catalog
     jacoco                                     // built-in
 }
+
+/**
+ * Terminal credentials, read from `local.properties` (git-ignored) or the
+ * matching environment variable, so secrets never land in version control.
+ *
+ * The API key is issued per terminal per environment, so BEAD_API_KEY,
+ * TERMINAL_ID and MERCHANT_ID must all belong to the same terminal, or the
+ * API answers 403. No defaults: missing config is caught by BeadConfig at
+ * runtime rather than silently falling back to stale IDs.
+ */
+val localProps = Properties().apply {
+    rootProject.file("local.properties")
+        .takeIf { it.exists() }
+        ?.inputStream()
+        ?.use { load(it) }
+}
+
+/**
+ * local.properties → environment variable → default.
+ *
+ * Whitespace, a trailing semicolon and surrounding quotes are stripped, so
+ * `KEY=abc`, `KEY = abc` and `KEY = "abc";` (the form copied out of the
+ * generated BuildConfig.java) all behave the same. The value is re-quoted
+ * when it is written back into BuildConfig.
+ */
+fun beadConfig(name: String, default: String = ""): String =
+    (localProps.getProperty(name) ?: System.getenv(name) ?: default)
+        .trim()
+        .removeSuffix(";")
+        .trim()
+        .removeSurrounding("\"")
+        .removeSurrounding("'")
+        .trim()
 
 android {
     namespace  = "com.beadpay.wrapper"
@@ -25,8 +59,11 @@ android {
         versionName               = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // AppAuth redirect scheme
-        manifestPlaceholders["appAuthRedirectScheme"] = "beadwrapper"
+        // Terminal identity + credentials for POST /payments/crypto.
+        // Defined here (not per-build-type) so release builds compile too.
+        buildConfigField("String", "BEAD_API_KEY", "\"${beadConfig("BEAD_API_KEY")}\"")
+        buildConfigField("String", "MERCHANT_ID",  "\"${beadConfig("MERCHANT_ID")}\"")
+        buildConfigField("String", "TERMINAL_ID",  "\"${beadConfig("TERMINAL_ID")}\"")
     }
 
     buildFeatures {
@@ -46,13 +83,6 @@ android {
             // new property names in AGP 8.10
             enableUnitTestCoverage    = true   // JUnit tests that run on the JVM
             enableAndroidTestCoverage = true   // connected / instrumentation tests
-
-            buildConfigField("String", "USERNAME", "\"6786eaf564636a2a69bd1848@beadpay.io\"")
-            buildConfigField("String", "PASSWORD", "\"Kfn!b7NC@$\"")
-            buildConfigField("String", "MERCHANT_ID", "\"664c5e3b0517b0a8a6321c9a\"")
-            buildConfigField("String", "TERMINAL_ID", "\"6786eaf564636a2a69bd1848\"")
-            buildConfigField("String", "CLIENT_ID",  "\"bead-terminal\"")
-            buildConfigField("String", "SCOPE",      "\"openid profile email\"")
         }
     }
 
@@ -68,10 +98,6 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // ───── OAuth / OIDC ─────
-    implementation("net.openid:appauth:0.11.1")
-    implementation("androidx.browser:browser:1.8.0") // bump to 1.8.0-beta02 if needed
-
     // ───── AndroidX core / UI ─────
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -86,9 +112,6 @@ dependencies {
 
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
-
-    // ───── Secure credential storage ─────
-    implementation("androidx.security:security-crypto:1.1.0-beta01")
 
     // ───── Logging ─────
     implementation("com.jakewharton.timber:timber:5.0.1")

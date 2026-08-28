@@ -22,7 +22,9 @@ import com.beadpay.wrapper.network.PaymentsApi
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 @AndroidEntryPoint
 class PaymentWebViewActivity : ComponentActivity() {
@@ -48,7 +50,7 @@ class PaymentWebViewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
@@ -80,22 +82,22 @@ class PaymentWebViewActivity : ComponentActivity() {
                 val statusCode = response.statusCode
 
                 if (statusCode != lastStatus) {
-                    Log.i(TAG, "🟢 Payment status changed: $statusCode")
+                    Timber.tag(TAG).i("🟢 Payment status changed: $statusCode")
                     lastStatus = statusCode
                 } else {
-                    Log.d(TAG, "Status unchanged: $statusCode")
+                    Timber.tag(TAG).d("Status unchanged: $statusCode")
                 }
 
                 if (statusCode.equals("COMPLETED", ignoreCase = true) ||
                     statusCode.equals("FAILED", ignoreCase = true)) {
 
-                    Log.i(TAG, "🎯 Final status reached: $statusCode — finishing activity.")
+                    Timber.tag(TAG).i("🎯 Final status reached: $statusCode — finishing activity.")
                     finishWithResult(trackingId, statusCode)
                     break
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error polling payment status", e)
+                Timber.tag(TAG).e(e, "Error polling payment status")
                 showErrorDialog("Failed to check payment status.\n${e.localizedMessage}")
                 break
             }
@@ -107,22 +109,23 @@ class PaymentWebViewActivity : ComponentActivity() {
     private inner class BeadWebClient : WebViewClient() {
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-            Log.d(TAG, "Intercepted request URL → ${request.url}")
+            Timber.tag(TAG).d("Intercepted request URL → ${request.url}")
             return handleUrl(request.url)
         }
 
-        @Suppress("OverridingDeprecatedMember", "DEPRECATION")
+        @Deprecated("Deprecated in Java")
+        @Suppress("OverridingDeprecatedMember")
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-            Log.d(TAG, "Intercepted legacy URL → $url")
-            return handleUrl(Uri.parse(url))
+            Timber.tag(TAG).d("Intercepted legacy URL → $url")
+            return handleUrl(url.toUri())
         }
 
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-            Log.d(TAG, "Page STARTED → $url")
+            Timber.tag(TAG).d("Page STARTED → $url")
         }
 
         override fun onPageFinished(view: WebView, url: String) {
-            Log.d(TAG, "Page FINISHED → $url")
+            Timber.tag(TAG).d("Page FINISHED → $url")
         }
 
         override fun onReceivedError(
@@ -130,7 +133,7 @@ class PaymentWebViewActivity : ComponentActivity() {
             request: WebResourceRequest,
             error: WebResourceError
         ) {
-            Log.e(TAG, "ERROR ${error.errorCode} on ${request.url} : ${error.description}")
+            Timber.tag(TAG).e("ERROR ${error.errorCode} on ${request.url} : ${error.description}")
             showErrorDialog("Page load error: ${error.description}")
         }
 
@@ -139,7 +142,7 @@ class PaymentWebViewActivity : ComponentActivity() {
                 val paymentId = uri.getQueryParameter("paymentId") ?: ""
                 val statusCode = uri.getQueryParameter("statusCode") ?: "UNKNOWN"
 
-                Log.i(TAG, "Transaction complete → paymentId=$paymentId, status=$statusCode")
+                Timber.tag(TAG).i("Transaction complete → paymentId=$paymentId, status=$statusCode")
 
                 finishWithResult(paymentId, statusCode)
                 return true
@@ -158,10 +161,11 @@ class PaymentWebViewActivity : ComponentActivity() {
     }
 
     private fun showErrorAndFinish(message: String) {
-        Log.e(TAG, "ERROR: $message")
+        Timber.tag(TAG).e("ERROR: $message")
         showErrorDialog(message)
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private fun WebView.configureSettings() = settings.run {
         javaScriptEnabled = true
         domStorageEnabled = true

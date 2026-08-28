@@ -12,7 +12,7 @@ interface PaymentsApi {
 
     @POST("payments/crypto")
     suspend fun createPayment(
-        /* Authorization header is injected by AuthInterceptor */
+        /* X-Api-Key header is injected by ApiKeyInterceptor */
         @Body request: PaymentRequest
     ): PaymentResponse
 
