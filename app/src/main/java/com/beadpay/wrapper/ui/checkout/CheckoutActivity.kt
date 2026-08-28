@@ -61,10 +61,7 @@ class CheckoutActivity : ComponentActivity() {
         }
 
         /* 2. Read & validate amount from the wrapper-intent */
-        val amount: Double = intent
-            .getFloatExtra(PayContract.EXTRA_AMOUNT, -1f)
-            .toDouble()
-            .takeIf { it > 0.0 }
+        val amount: Double = PayContract.readAmount(intent)
             ?: return showErrorAndFinish("Invalid or missing amount")
 
         Timber.d("Starting payment: %.2f USD", amount)
