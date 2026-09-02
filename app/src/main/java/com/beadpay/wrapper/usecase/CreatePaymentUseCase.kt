@@ -17,12 +17,16 @@ class CreatePaymentUseCase @Inject constructor(
      *
      * @param amount      Total in **major units** (e.g. `BigDecimal(100.00)` for $100)
      * @param reference   Merchant-side order / invoice number
-     * @param customer    Full customer object (email, address, …)
+     * @param customer    Full customer object, or null to send no customer block
+     * @param redirectUrl Resolved redirect url, or null to send none
+     * @param refundEmail Where a refund goes, or null for the customer's email
      */
     suspend operator fun invoke(
         amount: Double,
         reference: String = "ORDER123",
-        customer: Customer
+        customer: Customer?,
+        redirectUrl: String?,
+        refundEmail: String? = null
     ): PaymentResponse =
-        repo.createPayment(amount, reference, customer)
+        repo.createPayment(amount, reference, customer, redirectUrl, refundEmail)
 }

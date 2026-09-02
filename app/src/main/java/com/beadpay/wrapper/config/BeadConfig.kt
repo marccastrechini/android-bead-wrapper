@@ -17,6 +17,28 @@ object BeadConfig {
     val merchantId: String = BuildConfig.MERCHANT_ID
     val terminalId: String = BuildConfig.TERMINAL_ID
 
+    /**
+     * Where the hosted page sends the shopper when the flow ends or is closed.
+     *
+     * This is the close mechanism for a native WebView host. The hosted page
+     * only offers a bridge-based close to React Native hosts (via the injected
+     * `window.ReactNativeWebView`); with no bridge and no redirectUrl it has
+     * nowhere to go and renders no close control at all.
+     */
+    val redirectUrl: String = BuildConfig.REDIRECT_URL
+
+    /**
+     * Scheme of [url], which is what the WebView matches on navigation.
+     *
+     * Blank for a blank url — a caller that asked for no redirectUrl has no
+     * scheme to intercept, and the hosted page will render no close control.
+     */
+    fun schemeOf(url: String): String =
+        url.substringBefore("://", missingDelimiterValue = "").trim()
+
+    /** Scheme of the build-default [redirectUrl]. */
+    val redirectScheme: String get() = schemeOf(redirectUrl)
+
     /** Names of any values missing from `local.properties`. */
     val missing: List<String> = buildList {
         if (apiKey.isBlank())     add("BEAD_API_KEY")

@@ -64,6 +64,17 @@ android {
         buildConfigField("String", "BEAD_API_KEY", "\"${beadConfig("BEAD_API_KEY")}\"")
         buildConfigField("String", "MERCHANT_ID",  "\"${beadConfig("MERCHANT_ID")}\"")
         buildConfigField("String", "TERMINAL_ID",  "\"${beadConfig("TERMINAL_ID")}\"")
+
+        // Sent as `redirectUrl` at payment creation. The hosted page renders its
+        // close/exit control only when it has somewhere to send the shopper, and
+        // for a native WebView host that somewhere is this custom scheme, which
+        // PaymentWebViewActivity intercepts on navigation. Overridable so an
+        // https redirect can be tried without editing this file.
+        buildConfigField(
+            "String",
+            "REDIRECT_URL",
+            "\"${beadConfig("REDIRECT_URL", "beadwrapper://callback")}\""
+        )
     }
 
     buildFeatures {

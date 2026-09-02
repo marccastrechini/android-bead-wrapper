@@ -19,26 +19,33 @@ class PaymentRepository @Inject constructor(
     /**
      * Thin wrapper over **POST /payments/crypto**.
      *
-     * @param amount     total to charge (dollars; `Double`)
-     * @param reference  your internal order / invoice number
-     * @param customer   customer-details block
+     * @param amount       total to charge (dollars; `Double`)
+     * @param reference    your internal order / invoice number
+     * @param customer     customer-details block, or null to send none
+     * @param redirectUrl  where the hosted page sends the shopper when the
+     *   flow ends; null omits the field, which leaves the page with no close
+     *   control (it only offers a bridge-based close to React Native hosts).
+     * @param refundEmail  where a refund is sent; null means the customer's
+     *   own email, which is the common case and what a virtual terminal needs.
+     *   With no customer there is no fallback, so the field is omitted too.
      */
     suspend fun createPayment(
-        amount:    Double,
-        reference: String,
-        customer:  Customer
+        amount:      Double,
+        reference:   String,
+        customer:    Customer?,
+        redirectUrl: String?,
+        refundEmail: String? = null
     ): PaymentResponse {
 
         /* ── 1️⃣  Build request body ─────────────────────────── */
-        val body = PaymentRequest(
-            merchantId      = BuildConfig.MERCHANT_ID,
-            terminalId      = BuildConfig.TERMINAL_ID,
-            requestedAmount = amount,
-            paymentUrlType  = "web",
-            reference       = reference,
-            customer        = customer,
-            redirectUrl     = "",               // omitted if unused
-            refundEmail     = customer.email    // required for virtual terminals
+        // Assembled by PaymentRequest.of so the harness can offer a copy of the
+        // very same body rather than a reconstruction of it.
+        val body = PaymentRequest.of(
+            amount      = amount,
+            reference   = reference,
+            customer    = customer,
+            redirectUrl = redirectUrl,
+            refundEmail = refundEmail
         )
 
         /* ── 2️⃣  Pretty-print payload in debug builds ───────── */

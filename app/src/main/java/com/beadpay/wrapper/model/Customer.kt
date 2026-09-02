@@ -25,9 +25,15 @@ data class Customer(
 ) : Parcelable {
 
     companion object {
-        /** Debug-only stub customer. Replace once POS supplies details. */
+        /**
+         * Debug-only stub shopper, used when the POS sends no customer block.
+         *
+         * The email is a real deliverable address rather than `example.com`
+         * so that sandbox receipts and refund mail actually arrive somewhere
+         * they can be read while testing.
+         */
         fun demo() = Customer(
-            email       = "shopper@example.com",
+            email       = "marc@castro9.com",
             firstName   = "Jane",
             lastName    = "Doe",
             address     = "123 Main St",

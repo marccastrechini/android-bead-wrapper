@@ -1,3 +1,31 @@
 <resources>
     <string name="app_name">Bead wrapper</string>
+
+    <!-- Payment WebView -->
+    <string name="cancel_payment">✕  Cancel payment</string>
+    <string name="retry">Retry</string>
+    <string name="close">Close</string>
+    <string name="finishing_payment">Finishing payment…</string>
+    <string name="status_waiting">status: (waiting for the first poll)</string>
+    <string name="status_current">status: %1$s</string>
+    <string name="status_unknown">status: %1$s — UNRECOGNISED, still waiting</string>
+
+    <!-- Harness entry screen (MainActivity) -->
+    <string name="harness_title">Bead payment harness</string>
+    <string name="harness_amount">Amount (USD)</string>
+    <string name="harness_redirect_header">redirectUrl sent at payment creation</string>
+    <string name="harness_redirect_default">Build default (BuildConfig.REDIRECT_URL)</string>
+    <string name="harness_redirect_none">Send none (\"\") — no close control on the page</string>
+    <string name="harness_redirect_custom">Custom</string>
+    <string name="harness_redirect_custom_hint">e.g. beadwrapper://callback</string>
+    <string name="harness_customer_demo">Use demo shopper</string>
+    <string name="harness_customer_demo_caption">On: the demo shopper block is sent, and refundEmail defaults to its email.</string>
+    <string name="harness_customer_none_caption">Off: no customer block is sent, and no refundEmail unless you enter one below.</string>
+    <string name="harness_refund_email">Refund email (optional — defaults to customer email)</string>
+    <string name="harness_pay">Start payment</string>
+    <string name="harness_result_placeholder">No payment run yet.</string>
+    <string name="harness_error_amount">Enter an amount greater than zero</string>
+    <string name="harness_copy_json">Copy request JSON</string>
+    <string name="harness_copied">Request JSON copied (%1$d chars)</string>
+    <string name="harness_copy_needs_amount">Enter a valid amount first</string>
 </resources>
