@@ -11,11 +11,13 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -250,6 +252,17 @@ class PaymentWebViewActivity : ComponentActivity() {
         val web = WebView(this).apply {
             configureSettings()
             webViewClient = BeadWebClient()
+            // The HPP shows its close X, and signals us, only when this exists.
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun postMessage(message: String) {
+                    Log.d("BeadHpp", message)
+                    runOnUiThread {
+                        setResult(RESULT_CANCELED)
+                        finish()
+                    }
+                }
+            }, "ReactNativeWebView")
             loadUrl(hppUrl)
         }
         webView = web
