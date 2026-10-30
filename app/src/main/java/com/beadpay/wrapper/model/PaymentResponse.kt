@@ -1,14 +1,16 @@
 package com.beadpay.wrapper.model
 
-import android.os.Parcelable
 import com.squareup.moshi.JsonClass
-import kotlinx.parcelize.Parcelize
 
-@Parcelize
 @JsonClass(generateAdapter = true)
 data class PaymentResponse(
-    val id: String,
-    val hostedPaymentPageUrl: String,
-    val expiresAt: String,
-    val status: String
-) : Parcelable
+    val paymentId: String,
+    val trackingId: String,
+    val paymentPageId: String,
+    /**
+     * Hosted-payment-page URLs. The API returns a plain array of strings
+     * (one entry, matching the requested `paymentUrlType`), not the
+     * `{type, url}` objects an earlier revision of the API sent.
+     */
+    val paymentUrls: List<String>
+)
