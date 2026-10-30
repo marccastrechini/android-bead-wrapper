@@ -18,7 +18,9 @@ data class PaymentRequest(
     /** Omitted from the request body when null; see PayContract.EXTRA_REDIRECT_URL. */
     val redirectUrl:     String? = null,
     val description: String? = null,
-    val refundEmail: String? = null
+    val refundEmail: String? = null,
+    /** Omitted from the request body when null; see PayContract.EXTRA_TENDER_TYPES. */
+    val tenderTypes: List<String>? = null
 ) : Parcelable {
 
     companion object {
@@ -36,7 +38,8 @@ data class PaymentRequest(
             reference: String,
             customer: Customer?,
             redirectUrl: String?,
-            refundEmail: String?
+            refundEmail: String?,
+            tenderTypes: List<String>? = null
         ): PaymentRequest = PaymentRequest(
             merchantId      = BuildConfig.MERCHANT_ID,
             terminalId      = BuildConfig.TERMINAL_ID,
@@ -48,7 +51,9 @@ data class PaymentRequest(
             // Falls back to the shopper's own address, and with no shopper there
             // is nothing to fall back to: sending no customer means sending no
             // refundEmail either, so the API is asked the question cleanly.
-            refundEmail     = refundEmail ?: customer?.email
+            refundEmail     = refundEmail ?: customer?.email,
+            // Absent means the terminal's own tender configuration applies.
+            tenderTypes     = tenderTypes
         )
     }
 }

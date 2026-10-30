@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
+import com.google.android.material.chip.Chip
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -76,8 +77,13 @@ class MainActivity : AppCompatActivity() {
                 if (checkedId == R.id.redirectCustom) View.VISIBLE else View.GONE
         }
 
+        buildTenderChips()
+
         binding.demoCustomerSwitch.setOnCheckedChangeListener { _, _ -> updateCustomerCaption() }
         updateCustomerCaption()
+
+        binding.pollSwitch.setOnCheckedChangeListener { _, _ -> updatePollCaption() }
+        updatePollCaption()
 
         binding.payButton.setOnClickListener { startPayment() }
         binding.copyJsonButton.setOnClickListener { copyRequestJson() }
@@ -89,11 +95,13 @@ class MainActivity : AppCompatActivity() {
         val request = currentRequest() ?: return
 
         Timber.d(
-            "Harness → amount=%.2f redirectUrl=%s customer=%s refundEmail=%s",
+            "Harness → amount=%.2f tenderTypes=%s redirectUrl=%s customer=%s refundEmail=%s poll=%s",
             request.amount,
+            request.tenderTypes?.joinToString() ?: "(terminal config)",
             request.redirectUrl ?: "(build default)",
             if (request.omitCustomer) "(omitted)" else "(demo)",
-            request.refundEmail ?: "(customer email)"
+            request.refundEmail ?: "(customer email)",
+            request.pollStatus
         )
 
         launchedAtMs = SystemClock.elapsedRealtime()
@@ -164,8 +172,43 @@ class MainActivity : AppCompatActivity() {
             redirectUrl  = redirectUrl,
             customer     = null,   // the harness never hand-builds one
             refundEmail  = refundEmail,
-            omitCustomer = omitCustomer
+            omitCustomer = omitCustomer,
+            tenderTypes  = selectedTenders().ifEmpty { null },
+            pollStatus   = binding.pollSwitch.isChecked
         )
+    }
+
+    /**
+     * One filter chip per documented tender, labelled with the API value
+     * itself — the harness is for reproducing requests, so the chip says
+     * exactly what goes on the wire rather than a friendlier display name.
+     */
+    private fun buildTenderChips() {
+        PayContract.TENDER_TYPES.forEach { tender ->
+            binding.tenderGroup.addView(
+                Chip(this).apply {
+                    text = tender
+                    tag = tender
+                    isCheckable = true
+                    setOnCheckedChangeListener { _, _ -> updateTenderCaption() }
+                }
+            )
+        }
+        updateTenderCaption()
+    }
+
+    /** Checked tenders, in [PayContract.TENDER_TYPES] order. */
+    private fun selectedTenders(): List<String> =
+        (0 until binding.tenderGroup.childCount)
+            .map { binding.tenderGroup.getChildAt(it) as Chip }
+            .filter { it.isChecked }
+            .map { it.tag as String }
+
+    private fun updateTenderCaption() {
+        val selected = selectedTenders()
+        binding.tenderCaption.text =
+            if (selected.isEmpty()) getString(R.string.harness_tenders_none_caption)
+            else getString(R.string.harness_tenders_some_caption, selected.joinToString(", "))
     }
 
     /** Spells out what the switch will actually put on the wire. */
@@ -173,6 +216,13 @@ class MainActivity : AppCompatActivity() {
         binding.customerCaption.setText(
             if (binding.demoCustomerSwitch.isChecked) R.string.harness_customer_demo_caption
             else R.string.harness_customer_none_caption
+        )
+    }
+
+    private fun updatePollCaption() {
+        binding.pollCaption.setText(
+            if (binding.pollSwitch.isChecked) R.string.harness_poll_on_caption
+            else R.string.harness_poll_off_caption
         )
     }
 

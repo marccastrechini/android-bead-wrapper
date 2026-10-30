@@ -28,13 +28,16 @@ class PaymentRepository @Inject constructor(
      * @param refundEmail  where a refund is sent; null means the customer's
      *   own email, which is the common case and what a virtual terminal needs.
      *   With no customer there is no fallback, so the field is omitted too.
+     * @param tenderTypes  tenders the hosted page may offer; null omits the
+     *   field and the terminal's configured tenders apply.
      */
     suspend fun createPayment(
         amount:      Double,
         reference:   String,
         customer:    Customer?,
         redirectUrl: String?,
-        refundEmail: String? = null
+        refundEmail: String? = null,
+        tenderTypes: List<String>? = null
     ): PaymentResponse {
 
         /* ── 1️⃣  Build request body ─────────────────────────── */
@@ -45,7 +48,8 @@ class PaymentRepository @Inject constructor(
             reference   = reference,
             customer    = customer,
             redirectUrl = redirectUrl,
-            refundEmail = refundEmail
+            refundEmail = refundEmail,
+            tenderTypes = tenderTypes
         )
 
         /* ── 2️⃣  Pretty-print payload in debug builds ───────── */

@@ -20,13 +20,15 @@ class CreatePaymentUseCase @Inject constructor(
      * @param customer    Full customer object, or null to send no customer block
      * @param redirectUrl Resolved redirect url, or null to send none
      * @param refundEmail Where a refund goes, or null for the customer's email
+     * @param tenderTypes Tenders to offer, or null for the terminal's configuration
      */
     suspend operator fun invoke(
         amount: Double,
         reference: String = "ORDER123",
         customer: Customer?,
         redirectUrl: String?,
-        refundEmail: String? = null
+        refundEmail: String? = null,
+        tenderTypes: List<String>? = null
     ): PaymentResponse =
-        repo.createPayment(amount, reference, customer, redirectUrl, refundEmail)
+        repo.createPayment(amount, reference, customer, redirectUrl, refundEmail, tenderTypes)
 }

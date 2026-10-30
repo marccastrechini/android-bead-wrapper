@@ -45,6 +45,10 @@ object CheckoutRequest {
     fun refundEmail(intent: Intent): String? =
         PayContract.readRefundEmail(intent)
 
+    /** The caller's tender list, or null to let the terminal's configuration apply. */
+    fun tenderTypes(intent: Intent): List<String>? =
+        PayContract.readTenderTypes(intent)
+
     /**
      * The exact body that would be POSTed for [intent], or null when the
      * amount is missing or not a positive amount.
@@ -57,7 +61,8 @@ object CheckoutRequest {
             reference   = DEFAULT_REFERENCE,
             customer    = customer(intent),
             redirectUrl = redirectUrl(intent),
-            refundEmail = refundEmail(intent)
+            refundEmail = refundEmail(intent),
+            tenderTypes = tenderTypes(intent)
         )
     }
 }

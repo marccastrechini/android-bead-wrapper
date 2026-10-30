@@ -117,7 +117,15 @@ class CheckoutActivity : ComponentActivity() {
             )
         }
 
-        /* 6. Create the payment */
+        /* 6. Tenders: the caller's list, or none sent and the terminal's own
+         *    configuration applies. */
+        val tenderTypes = CheckoutRequest.tenderTypes(intent)
+        Timber.d("tenderTypes=%s", tenderTypes?.joinToString() ?: "(omitted - terminal config)")
+        if (!PayContract.readPollStatus(intent)) {
+            Timber.w("Status polling OFF: the WebView will not close on a final status.")
+        }
+
+        /* 7. Create the payment */
         lifecycleScope.launch {
             try {
                 val rsp = createPaymentUseCase(
@@ -125,13 +133,14 @@ class CheckoutActivity : ComponentActivity() {
                     reference   = CheckoutRequest.DEFAULT_REFERENCE,
                     customer    = customer,
                     redirectUrl = redirectUrl,
-                    refundEmail = refundEmail
+                    refundEmail = refundEmail,
+                    tenderTypes = tenderTypes
                 )
 
                 val hppUrl = rsp.paymentUrls.firstOrNull()
                     ?: return@launch showErrorAndFinish("Missing web payment URL")
 
-                /* 7. Launch the Hosted-Payment-Page *for result* */
+                /* 8. Launch the Hosted-Payment-Page *for result* */
                 val webIntent = Intent(
                     this@CheckoutActivity,
                     PaymentWebViewActivity::class.java
@@ -142,6 +151,10 @@ class CheckoutActivity : ComponentActivity() {
                     // The WebView intercepts this url's scheme; it must be the
                     // one actually sent to the API, not the build default.
                     putExtra(PaymentWebViewActivity.EXTRA_REDIRECT_URL, redirectUrl.orEmpty())
+                    putExtra(
+                        PaymentWebViewActivity.EXTRA_POLL_STATUS,
+                        PayContract.readPollStatus(intent)
+                    )
                 }
 
                 webLauncher.launch(webIntent)   // ⬅️ wait for result

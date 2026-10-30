@@ -87,6 +87,52 @@ object PayContract {
      */
     const val EXTRA_OMIT_CUSTOMER = "omitCustomer"
 
+    /**
+     * Whether the wrapper polls the payment's status while the hosted page is
+     * open. Absent or true polls — the default, and the only way the WebView
+     * closes itself when no redirectUrl was sent.
+     *
+     * False leaves the page alone: nothing closes it on a final status, so it
+     * stays on the hosted page's own ending screen until the shopper uses the
+     * cancel bar or back. For inspecting those screens, not for a real till —
+     * the exit is then reported as a user cancel whatever the payment did,
+     * and a redirect is reported on its own unverified statusCode.
+     */
+    const val EXTRA_POLL_STATUS = "pollStatus"
+
+    /* ── Tenders ──────────────────────────────────────────────── */
+
+    /**
+     * Tenders the hosted page may offer, sent as `tenderTypes`.
+     *
+     * One comma-separated string (`"bitcoin,usdcBase"`) rather than a string
+     * array, for the same reason the customer is flat strings: it survives
+     * `adb shell am start --es` and any POS's own copy of this contract.
+     * Values are the API's exact, case-sensitive names — see [TENDER_TYPES].
+     *
+     * Absent or blank means the field is left off the request and the
+     * terminal's configured tenders apply. Listing a tender does not enable
+     * it: one the terminal is not approved for is not offered.
+     */
+    const val EXTRA_TENDER_TYPES = "tenderTypes"
+
+    /** Every `tenderTypes` value the API documents, in its own spelling. */
+    val TENDER_TYPES = listOf(
+        "bitcoin",
+        "bitcoin_Lightning",
+        "ethereum",
+        "usdC_Polygon",
+        "usdC_Ethereum",
+        "usdcBase",
+        "usdcSolana",
+        "paypal",
+        "venmo",
+        "cashApp",
+        "alipay",
+        "weChatPay",
+        "klarna"
+    )
+
     /** Customer extras the API requires; [EXTRA_CUSTOMER_ADDRESS2] is optional. */
     private val REQUIRED_CUSTOMER_EXTRAS = listOf(
         EXTRA_CUSTOMER_EMAIL,
@@ -160,6 +206,10 @@ object PayContract {
      * @param refundEmail `null` to refund to the customer's email.
      * @param omitCustomer `true` to send no customer block at all; see
      *   [EXTRA_OMIT_CUSTOMER]. Overrides [customer] when both are given.
+     * @param tenderTypes `null` or empty to use the terminal's configured
+     *   tenders; see [EXTRA_TENDER_TYPES].
+     * @param pollStatus  `false` to leave the hosted page open on its final
+     *   screen; see [EXTRA_POLL_STATUS].
      */
     @JvmOverloads
     fun buildIntent(
@@ -168,7 +218,9 @@ object PayContract {
         redirectUrl: String? = null,
         customer: Customer? = null,
         refundEmail: String? = null,
-        omitCustomer: Boolean = false
+        omitCustomer: Boolean = false,
+        tenderTypes: List<String>? = null,
+        pollStatus: Boolean = true
     ): Intent =
         Intent(context, CheckoutActivity::class.java)
             .putExtra(EXTRA_AMOUNT, amount)
@@ -176,6 +228,9 @@ object PayContract {
                 redirectUrl?.let { putExtra(EXTRA_REDIRECT_URL, it) }
                 refundEmail?.let { putExtra(EXTRA_REFUND_EMAIL, it) }
                 if (omitCustomer) putExtra(EXTRA_OMIT_CUSTOMER, true)
+                if (!pollStatus) putExtra(EXTRA_POLL_STATUS, false)
+                tenderTypes?.takeIf { it.isNotEmpty() }
+                    ?.let { putExtra(EXTRA_TENDER_TYPES, it.joinToString(",")) }
                 customer?.let { c ->
                     putExtra(EXTRA_CUSTOMER_EMAIL, c.email)
                     putExtra(EXTRA_CUSTOMER_FIRST_NAME, c.firstName)
@@ -246,6 +301,15 @@ object PayContract {
         intent.getBooleanExtra(EXTRA_OMIT_CUSTOMER, false) ||
             intent.getStringExtra(EXTRA_OMIT_CUSTOMER).equals("true", ignoreCase = true)
 
+    /**
+     * False only when the caller explicitly turned polling off. Accepts the
+     * string form too, like [readOmitCustomer], so `--es pollStatus false`
+     * works from the shell.
+     */
+    fun readPollStatus(intent: Intent): Boolean =
+        intent.getBooleanExtra(EXTRA_POLL_STATUS, true) &&
+            !intent.getStringExtra(EXTRA_POLL_STATUS).equals("false", ignoreCase = true)
+
     /** True when the caller set any customer extra at all, complete or not. */
     fun hasCustomerFields(intent: Intent): Boolean =
         (REQUIRED_CUSTOMER_EXTRAS + EXTRA_CUSTOMER_ADDRESS2)
@@ -288,6 +352,21 @@ object PayContract {
     fun readRefundEmail(intent: Intent): String? =
         intent.getStringExtra(EXTRA_REFUND_EMAIL)?.trim()?.ifBlank { null }
 
+    /**
+     * Reads the tender list, or null when the caller sent none.
+     *
+     * Values are trimmed and de-duplicated but not checked against
+     * [TENDER_TYPES]: the API is the authority on what it accepts, and a
+     * tender added there should not need a wrapper release to be sendable.
+     */
+    fun readTenderTypes(intent: Intent): List<String>? =
+        intent.getStringExtra(EXTRA_TENDER_TYPES)
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.distinct()
+            ?.ifEmpty { null }
+
     /* ── Result ───────────────────────────────────────────────── */
 
     /**
@@ -328,8 +407,8 @@ object PayContract {
     /* ── Activity-Result API helper ───────────────────────────── */
 
     /**
-     * Input is the amount plus the optional redirect-url, customer and
-     * refund-email overrides; see [buildIntent].
+     * Input is the amount plus the optional redirect-url, customer,
+     * refund-email and tender overrides; see [buildIntent].
      */
     data class Request(
         val amount: Double,
@@ -337,7 +416,11 @@ object PayContract {
         val customer: Customer? = null,
         val refundEmail: String? = null,
         /** `true` sends no customer block; see [EXTRA_OMIT_CUSTOMER]. */
-        val omitCustomer: Boolean = false
+        val omitCustomer: Boolean = false,
+        /** Empty or null uses the terminal's tenders; see [EXTRA_TENDER_TYPES]. */
+        val tenderTypes: List<String>? = null,
+        /** `false` leaves the page on its final screen; see [EXTRA_POLL_STATUS]. */
+        val pollStatus: Boolean = true
     )
 
     class CreatePaymentLauncher : ActivityResultContract<Request, PayResult?>() {
@@ -349,7 +432,9 @@ object PayContract {
                 input.redirectUrl,
                 input.customer,
                 input.refundEmail,
-                input.omitCustomer
+                input.omitCustomer,
+                input.tenderTypes,
+                input.pollStatus
             )
 
         /**

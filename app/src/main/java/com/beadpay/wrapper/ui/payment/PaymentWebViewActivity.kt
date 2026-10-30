@@ -75,6 +75,12 @@ class PaymentWebViewActivity : ComponentActivity() {
          */
         const val EXTRA_REDIRECT_URL = "extra_redirect_url"
 
+        /**
+         * False leaves the page open on its own ending screen: no status poll,
+         * so nothing closes it. See [PayContract.EXTRA_POLL_STATUS].
+         */
+        const val EXTRA_POLL_STATUS = "extra_poll_status"
+
         private const val TAG = "PaymentWebView"
 
         /** Transient poll failures to ride out before surfacing an error. */
@@ -164,6 +170,8 @@ class PaymentWebViewActivity : ComponentActivity() {
     private var redirectUrl: String = ""
     private val redirectScheme: String get() = BeadConfig.schemeOf(redirectUrl)
 
+    private var pollStatus: Boolean = true
+
     private var webView: WebView? = null
 
     /**
@@ -202,6 +210,7 @@ class PaymentWebViewActivity : ComponentActivity() {
         trackingId = intent.getStringExtra(EXTRA_TRACKING_ID).orEmpty()
         paymentId = intent.getStringExtra(EXTRA_PAYMENT_ID).orEmpty()
         redirectUrl = intent.getStringExtra(EXTRA_REDIRECT_URL).orEmpty()
+        pollStatus = intent.getBooleanExtra(EXTRA_POLL_STATUS, true)
 
         // Launched wrong: show it here rather than crashing on an `error(…)`,
         // because a crash tells the POS nothing at all.
@@ -278,7 +287,10 @@ class PaymentWebViewActivity : ComponentActivity() {
             gravity = Gravity.CENTER
             val pad = (4 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad, pad, pad)
-            text = getString(com.beadpay.wrapper.R.string.status_waiting)
+            text = getString(
+                if (pollStatus) com.beadpay.wrapper.R.string.status_waiting
+                else com.beadpay.wrapper.R.string.status_polling_off
+            )
         }
         statusView = status
 
@@ -396,6 +408,10 @@ class PaymentWebViewActivity : ComponentActivity() {
 
     private fun startPolling() {
         pollJob?.cancel()
+        if (!pollStatus) {
+            Timber.tag(TAG).w("Status polling is OFF - the page stays open on its final screen.")
+            return
+        }
         pollJob = lifecycleScope.launch { pollPaymentStatus(trackingId) }
     }
 
@@ -607,6 +623,22 @@ class PaymentWebViewActivity : ComponentActivity() {
         if (finished || redirectSeen) return
 
         if (id.isNotBlank()) paymentId = id
+
+        // No poll is running to wait on, so the redirect's own claim is all
+        // there is. Reported as such rather than parked on the spinner forever.
+        if (!pollStatus) {
+            val hint = statusHint?.uppercase(Locale.US) ?: "UNKNOWN"
+            Timber.tag(TAG).w("Redirect intercepted with polling OFF; reporting unverified %s.", hint)
+            finishWith(
+                TERMINAL_STATUSES[hint] ?: RESULT_CANCELED,
+                paymentId.ifBlank { trackingId },
+                hint,
+                error = null,
+                route = PayContract.ROUTE_REDIRECT_HINT
+            )
+            return
+        }
+
         redirectStatusHint = statusHint
         redirectDeadlineMs = SystemClock.elapsedRealtime() + REDIRECT_GRACE_MS
 

@@ -79,6 +79,28 @@
                     android:text="1.00" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- ── tenderTypes: chips are added from PayContract.TENDER_TYPES ── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/harness_tenders_header"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/tenderGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tenderCaption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="None selected: tenderTypes is omitted." />
+
             <!-- ── redirectUrl: the three states PayContract documents ── -->
             <TextView
                 android:layout_width="wrap_content"
@@ -128,6 +150,23 @@
                     android:layout_height="wrap_content"
                     android:inputType="textUri" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- ── Status polling: off keeps the page on its ending screen ── -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/pollSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:checked="true"
+                android:text="@string/harness_poll" />
+
+            <TextView
+                android:id="@+id/pollCaption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="On: the WebView closes on a final status." />
 
             <!-- ── Customer ── -->
             <com.google.android.material.materialswitch.MaterialSwitch
