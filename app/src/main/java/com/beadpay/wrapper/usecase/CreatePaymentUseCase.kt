@@ -1,0 +1,34 @@
+package com.beadpay.wrapper.usecase
+
+import com.beadpay.wrapper.model.Customer
+import com.beadpay.wrapper.model.PaymentResponse
+import com.beadpay.wrapper.repository.PaymentRepository
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class CreatePaymentUseCase @Inject constructor(
+    private val repo: PaymentRepository
+) {
+
+    /**
+     * Wraps [PaymentRepository.createPayment] so the UI layer can invoke it with
+     * strong, explicit parameters.
+     *
+     * @param amount      Total in **major units** (e.g. `BigDecimal(100.00)` for $100)
+     * @param reference   Merchant-side order / invoice number
+     * @param customer    Full customer object, or null to send no customer block
+     * @param redirectUrl Resolved redirect url, or null to send none
+     * @param refundEmail Where a refund goes, or null for the customer's email
+     * @param tenderTypes Tenders to offer, or null for the terminal's configuration
+     */
+    suspend operator fun invoke(
+        amount: Double,
+        reference: String = "ORDER123",
+        customer: Customer?,
+        redirectUrl: String?,
+        refundEmail: String? = null,
+        tenderTypes: List<String>? = null
+    ): PaymentResponse =
+        repo.createPayment(amount, reference, customer, redirectUrl, refundEmail, tenderTypes)
+}
